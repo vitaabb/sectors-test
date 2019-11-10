@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html" charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="styles.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<title>Sectors</title>
+</head>
+<body>
+<div class="container">
+	<h2>Please enter your name and pick the Sectors you are currently involved in.</h2>
+	<div id="submitMessage"></div>
+	<form id="form" class="UserForm" onsubmit="submitForm()">
+		<div class="form-group">
+			<label for='username'>Name:</label>
+			<input id='username' class="form-control" type="text" required placeholder="Enter your name"/>
+		</div>
+		<div class="list-group">
+			<label for="sectorsSelect"> Sectors:</label>
+			<select id="sectorsSelect" class="SectorsSelect" required multiple size="5"></select>
+		</div>
+		<div class="TermsCheckbox form-check">
+			<input id="checkbox" type="checkbox" class="form-check-input" required>
+			<label class="form-check-label" for="checkbox">Agree to terms</label>
+		</div>
+		<div>
+			<button class="SaveButton btn btn-primary" type="submit">Save</button>
+		</div>
+	</form>
+</div>
+<script>
+  function submitForm() {
+    let body = {};
+    body.token = this.getUserToken();
+    body.name = document.getElementById("username").value;
+		body.sectorList = [...document.getElementById("sectorsSelect").selectedOptions].map(option => +option.value);
+    httpPost('users', body, () => document.getElementById("submitMessage").innerText = "Saved.");
+  }
+
+  function getUserToken() {
+    return localStorage.getItem('userToken');
+  }
+
+  function setUserToken(token) {
+    localStorage.setItem('userToken', token);
+  }
+
+  function generateNewToken() {
+    let tokenSize = 16;
+    let token = "";
+    let set = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    for (let i = 0; i < tokenSize; i++) {
+      token += set.charAt(Math.floor(Math.random() * set.length));
+    }
+
+    return token;
+  }
+
+  function httpGet(url, callback) {
+    let xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+        callback(xmlHttp.responseText ? JSON.parse(xmlHttp.responseText) : {});
+    };
+    xmlHttp.open("GET", url, false);
+    xmlHttp.send(null);
+  }
+
+  function httpPost(url, body, callback) {
+    let xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+        callback(xmlHttp.responseText ? JSON.parse(xmlHttp.responseText) : {});
+    };
+    xmlHttp.open("POST", url, false);
+    xmlHttp.setRequestHeader('Content-type', 'application/json');
+    xmlHttp.send(JSON.stringify(body));
+  }
+
+  function getSubSectors(id, sectors) {
+    return sectors.filter(sector => sector.parentId === id);
+	}
+
+  function getAllAncestors(id, sectors, level) {
+
+    let subSectors = getSubSectors(id, sectors);
+    if (subSectors.length === 0) {
+      return [];
+		}
+
+    let result = [];
+    for(let i = 0; i < subSectors.length; i++) {
+      result.push({ id: subSectors[i].id, name: `${level}${subSectors[i].name}`, parentId: subSectors[i].parentId});
+      let ancestors = getAllAncestors(subSectors[i].id, sectors, level + '&nbsp;&nbsp;&nbsp;&nbsp;');
+      if (ancestors.length !== 0) {
+        result.push(...ancestors);
+      }
+		}
+
+    return result;
+  }
+
+  function getSectorStructure(sectors) {
+    let sortedSectors = [];
+    let topSectors = getSubSectors(0, sectors);
+    for(let i = 0; i < topSectors.length; i++) {
+      sortedSectors.push(topSectors[i]);
+      sortedSectors.push(...getAllAncestors(topSectors[i].id, sectors, '&nbsp;&nbsp;&nbsp;&nbsp;'));
+    }
+
+		return sortedSectors;
+  }
+
+  function displaySectors(sectors, selectedSectorList) {
+    let sectorHierarchy =  getSectorStructure(sectors);
+    sectorHierarchy.map(({ id, name }) => {
+      let option = document.createElement('option');
+      option.key = id;
+      option.value = id;
+      option.innerHTML = name;
+      option.className = "list-group-item";
+      option.selected = selectedSectorList.filter(sector => sector.id === id).length > 0;
+
+      document.getElementById("sectorsSelect").appendChild(option);
+    });
+  }
+
+  function displayUserData(user) {
+    document.getElementById("username").value = user.name || '';
+  }
+
+  if (getUserToken() == null) {
+    setUserToken(generateNewToken());
+  }
+  httpGet(`/users/${getUserToken()}`, user => {
+    displayUserData(user);
+    httpGet('/sectors', sectors => {
+      displaySectors(sectors, user.sectorList || []);
+    });
+  });
+
+</script>
+</body>
+</html>

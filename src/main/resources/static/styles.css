@@ -1,0 +1,12 @@
+.SectorsSelect {
+  border: none;
+}
+
+.SectorsSelect,
+.UserForm {
+  width: 400px;
+}
+
+.TermsCheckbox {
+  margin-bottom: 20px;
+}

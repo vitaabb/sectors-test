@@ -1,0 +1,13 @@
+package com.sectors.test;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SectorsTestApplication {
+
+  public static void main(String[] args) {
+    SpringApplication.run(SectorsTestApplication.class, args);
+  }
+
+}
